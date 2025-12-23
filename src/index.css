@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  /* PRIMARY COLORS - Modern Fintech Palette */
+  --color-primary: #1E40AF; /* Deep Indigo Blue */
+  --color-accent: #8B5CF6; /* Soft Violet */
+  --color-highlight: #22D3EE; /* Cyan Glow */
+
+  /* BACKGROUNDS & SURFACES */
+  --color-bg-main: #F9FAFB; /* Frost White */
+  --color-bg-navbar: rgba(255, 255, 255, 0.75); /* Glass Surface */
+  --color-bg-card: #FFFFFF; /* Card Background */
+  --color-border: #E5E7EB; /* Borders & Dividers */
+
+  /* TEXT COLORS */
+  --color-text-heading: #0F172A; /* Primary Heading */
+  --color-text-body: #334155; /* Body Text */
+  --color-text-muted: #64748B; /* Muted Text */
+
+  /* GRADIENTS */
+  --gradient-primary: linear-gradient(135deg, #1E40AF, #8B5CF6);
+  --gradient-accent-glow: linear-gradient(135deg, #22D3EE, #8B5CF6);
+
+  /* Legacy support */
+  --background: 0, 0%, 0%;
+  --foreground: 0, 100%, 100%;
+}
+
+/* Global typography improvements */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-long {
+  animation: fadeIn 1.5s ease-out;
+}
+
+/* Infinite slider movement from RIGHT → LEFT */
+.slider-track {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: slide-left 12s linear infinite;
+}
+
+@keyframes slide-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Blob animation for hero background */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
