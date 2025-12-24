@@ -6,24 +6,59 @@ Generates specific reports for each document type
 import json
 import re
 import time
-from openai import OpenAI
+import vertexai
+from vertexai.generative_models import GenerativeModel
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Lazy initialization of OpenAI client
+# Lazy initialization of Vertex AI client
 _client = None
 
-def get_openai_client():
-    """Get or initialize OpenAI client"""
+def get_vertexai_client():
+    """Get or initialize Vertex AI client"""
     global _client
     if _client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is not set. Please add it to your .env file.")
-        _client = OpenAI(api_key=api_key)
+        project_id = os.getenv("VERTEXAI_PROJECT_ID")
+        location = os.getenv("VERTEXAI_LOCATION", "us-central1")
+        model_name = os.getenv("VERTEXAI_MODEL", "gemini-1.5-pro")
+        
+        if not project_id:
+            raise ValueError("VERTEXAI_PROJECT_ID environment variable is not set. Please add it to your .env file.")
+        
+        vertexai.init(project=project_id, location=location)
+        _client = GenerativeModel(model_name)
     return _client
+
+def generate_content_vertexai(prompt: str, require_json: bool = False):
+    """
+    Helper function to generate content using Vertex AI
+    
+    Args:
+        prompt: The prompt to send to the model
+        require_json: If True, expects JSON response and adds JSON instruction
+    
+    Returns:
+        str: The generated content
+    """
+    client = get_vertexai_client()
+    if require_json:
+        prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. No markdown formatting, code blocks, or explanations."
+    
+    response = client.generate_content(prompt)
+    if not response or not response.text:
+        raise ValueError("Vertex AI returned empty content")
+    
+    content = response.text.strip()
+    # Clean JSON if needed
+    if require_json:
+        if content.startswith("```json"):
+            content = content.replace("```json", "").replace("```", "").strip()
+        elif content.startswith("```"):
+            content = content.replace("```", "").strip()
+    
+    return content
 
 
 def generate_bank_statement_reports(base_data, text):
@@ -63,16 +98,8 @@ Base Data: {json.dumps(base_data, indent=2)[:3000]}
 Return ONLY JSON."""
     
     try:
-        res = get_openai_client().chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": cash_flow_prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        reports["cash_flow_statement"] = json.loads(content.strip())
+        content = generate_content_vertexai(cash_flow_prompt, require_json=True)
+        reports["cash_flow_statement"] = json.loads(content)
     except Exception as e:
         reports["cash_flow_statement"] = {"error": f"Could not generate: {str(e)}"}
     
@@ -152,16 +179,8 @@ Transactions: {json.dumps(transactions[:100], indent=2)[:4000]}
 Return ONLY JSON."""
     
     try:
-        res = get_openai_client().chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": anomaly_prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        reports["anomaly_suspicious_transaction_report"] = json.loads(content.strip())
+        content = generate_content_vertexai(anomaly_prompt, require_json=True)
+        reports["anomaly_suspicious_transaction_report"] = json.loads(content)
     except Exception as e:
         reports["anomaly_suspicious_transaction_report"] = {"error": f"Could not generate: {str(e)}"}
     
@@ -279,16 +298,8 @@ Return ONLY JSON."""
     
     for report_name, prompt in prompts.items():
         try:
-            res = get_openai_client().chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"},
-                timeout=60.0
-            )
-            content = res.choices[0].message.content
-            if content is None:
-                raise ValueError("OpenAI returned empty content")
-            reports[report_name] = json.loads(content.strip())
+            content = generate_content_vertexai(prompt, require_json=True)
+            reports[report_name] = json.loads(content)
         except Exception as e:
             reports[report_name] = {"error": f"Could not generate {report_name}: {str(e)}"}
     
@@ -555,17 +566,8 @@ Return ONLY valid JSON with REAL extracted data. No explanations or markdown for
         print(f"  Full data length: {len(full_excel_data_text)} characters")
         print(f"{'='*60}\n")
         
-        client = get_openai_client()
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": gst_audit_prompt}],
-            response_format={"type": "json_object"},
-            timeout=180.0  # Increased timeout for processing all data
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        gst_report = json.loads(content.strip())
+        content = generate_content_vertexai(gst_audit_prompt, require_json=True)
+        gst_report = json.loads(content)
         
         # Log extracted values for verification
         print(f"\n{'='*60}")
@@ -1198,17 +1200,10 @@ Provide a detailed analysis covering:
 Return as a single comprehensive text analysis (not JSON)."""
     
     try:
-        client = get_openai_client()
-        analysis_res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            timeout=60.0
-        )
-        content = analysis_res.choices[0].message.content
-        if content is None:
-            analysis_text = "Analysis generation error: OpenAI returned empty content"
-        else:
-            analysis_text = content.strip()
+        try:
+            analysis_text = generate_content_vertexai(analysis_prompt, require_json=False)
+        except Exception as e:
+            analysis_text = f"Analysis generation error: {str(e)}"
     except Exception as e:
         analysis_text = f"Analysis generation error: {str(e)}"
     
@@ -1473,16 +1468,8 @@ OCR Text: {text[:4000]}
 Return ONLY JSON."""
     
     try:
-        res = get_openai_client().chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": audit_prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        audit_summary = json.loads(content.strip())
+        content = generate_content_vertexai(audit_prompt, require_json=True)
+        audit_summary = json.loads(content)
     except Exception as e:
         audit_summary = {"error": f"Could not generate audit summary: {str(e)}"}
     
@@ -1635,17 +1622,8 @@ Instructions:
 Return ONLY valid JSON. No explanations or markdown formatting."""
     
     try:
-        client = get_openai_client()
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": audit_prompt}],
-            response_format={"type": "json_object"},
-            timeout=120.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        audit_report = json.loads(content.strip())
+        content = generate_content_vertexai(audit_prompt, require_json=True)
+        audit_report = json.loads(content)
         
         # Add metadata
         audit_report["metadata"] = {
@@ -1684,16 +1662,8 @@ OCR Text: {text[:6000] if text else ""}
 Return ONLY JSON."""
     
     try:
-        res = get_openai_client().chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": contract_prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        contract_data = json.loads(content.strip())
+        content = generate_content_vertexai(contract_prompt, require_json=True)
+        contract_data = json.loads(content)
     except Exception as e:
         contract_data = {"error": f"Could not extract contract data: {str(e)}"}
     

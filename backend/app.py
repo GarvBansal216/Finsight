@@ -8,7 +8,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import re
-from openai import OpenAI, RateLimitError, APIError
+import vertexai
+from vertexai.generative_models import GenerativeModel
 from fpdf import FPDF
 from tempfile import NamedTemporaryFile
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ import uvicorn
 import time
 import platform
 import pandas as pd
+import asyncio
 try:
     from docx import Document
     DOCX_AVAILABLE = True
@@ -63,16 +65,104 @@ if poppler_path:
         if poppler_bin not in current_path:
             os.environ["PATH"] = os.pathsep.join([poppler_bin, current_path])
 
-# Load OpenAI API key from environment variable
-# Note: API key is required for document processing, but server can start without it
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    print("WARNING: OPENAI_API_KEY not set. Document processing will fail until API key is added to .env file.")
+# Load Vertex AI configuration from environment variables
+# Note: Vertex AI credentials are required for document processing
+vertexai_project = os.getenv("VERTEXAI_PROJECT_ID")
+vertexai_location = os.getenv("VERTEXAI_LOCATION", "us-central1")
+gemini_api_key = os.getenv("GEMINI_API_KEY")  # Fallback to Gemini API key if Vertex AI not configured
+vertexai_model_name = os.getenv("VERTEXAI_MODEL", "gemini-1.5-pro")
 
-# Initialize OpenAI client only if API key is available
-client = None
-if openai_api_key:
-    client = OpenAI(api_key=openai_api_key)
+# Initialize Vertex AI client
+vertexai_client = None
+if vertexai_project:
+    try:
+        vertexai.init(project=vertexai_project, location=vertexai_location)
+        vertexai_client = GenerativeModel(vertexai_model_name)
+        print(f"✓ Vertex AI initialized: project={vertexai_project}, location={vertexai_location}, model={vertexai_model_name}")
+    except Exception as e:
+        print(f"WARNING: Vertex AI initialization failed: {str(e)}")
+        print("Document processing will fail until Vertex AI is properly configured.")
+elif gemini_api_key:
+    # Fallback: Use Gemini API directly (not Vertex AI)
+    print("WARNING: Using Gemini API directly instead of Vertex AI. For production, use Vertex AI.")
+    print("Set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file for Vertex AI.")
+else:
+    print("WARNING: Neither Vertex AI nor Gemini API key configured. Document processing will fail.")
+    print("Please set VERTEXAI_PROJECT_ID or GEMINI_API_KEY in .env file.")
+
+# Helper function to generate content using Vertex AI
+def generate_content_with_vertexai(prompt: str, require_json: bool = False, max_retries: int = 3):
+    """
+    Generate content using Vertex AI Gemini model.
+    
+    Args:
+        prompt: The prompt to send to the model
+        require_json: If True, expects JSON response and adds JSON instruction to prompt
+        max_retries: Maximum number of retry attempts
+    
+    Returns:
+        str: The generated content
+    """
+    if not vertexai_client:
+        raise HTTPException(
+            status_code=500,
+            detail="Vertex AI is not configured. Please set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file."
+        )
+    
+    # Add JSON instruction if required
+    if require_json:
+        prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or any explanations."
+    
+    for attempt in range(max_retries):
+        try:
+            response = vertexai_client.generate_content(prompt)
+            
+            if not response or not response.text:
+                raise ValueError("Vertex AI returned empty content")
+            
+            content = response.text.strip()
+            
+            # Clean up JSON if needed
+            if require_json:
+                # Remove markdown code blocks if present
+                if content.startswith("```json"):
+                    content = content.replace("```json", "").replace("```", "").strip()
+                elif content.startswith("```"):
+                    content = content.replace("```", "").strip()
+            
+            return content
+        except Exception as e:
+            error_str = str(e)
+            # Handle rate limiting
+            if "429" in error_str or "rate_limit" in error_str.lower() or "quota" in error_str.lower():
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2  # Exponential backoff
+                    print(f"Rate limit hit, waiting {wait_time} seconds before retry...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Vertex AI API rate limit exceeded. Please wait a few seconds and try again."
+                    )
+            # Handle authentication errors
+            elif "401" in error_str or "403" in error_str or "permission" in error_str.lower() or "authentication" in error_str.lower():
+                raise HTTPException(
+                    status_code=401,
+                    detail="Vertex AI authentication failed. Please check your GCP credentials and project configuration."
+                )
+            else:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 1
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error generating content with Vertex AI: {str(e)}"
+                    )
+    
+    raise HTTPException(status_code=500, detail="Failed to get response from Vertex AI after retries")
 
 app = FastAPI(title="FinSight Document Processor", version="1.0.0")
 
@@ -326,7 +416,7 @@ def extract_text_from_docx(file_path):
 # ------------------------------
 
 def classify_document(text):
-    """Classify document type using OpenAI"""
+    """Classify document type using Vertex AI"""
     prompt = f"""
     You are a financial document classifier.
     Classify the document as one of:
@@ -351,69 +441,11 @@ def classify_document(text):
     """
     
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        # Add retry logic for rate limits
-        max_retries = 3
-        res = None
-        for attempt in range(max_retries):
-            try:
-                res = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": prompt}],
-                    timeout=30.0,
-                    response_format={"type": "json_object"}  # Force JSON response
-                )
-                break
-            except RateLimitError as rle:
-                if attempt < max_retries - 1:
-                    wait_time = (attempt + 1) * 2  # Exponential backoff: 2s, 4s, 6s
-                    print(f"Rate limit hit, waiting {wait_time} seconds before retry...")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    raise
-        
-        if res is None:
-            raise HTTPException(status_code=500, detail="Failed to get response from OpenAI after retries")
-        
-        content = res.choices[0].message.content
-        if content is None:
-            raise HTTPException(status_code=500, detail="OpenAI returned empty content")
-        response_text = content.strip()
-        # Try to parse JSON from the response
-        if response_text.startswith("```json"):
-            response_text = response_text.replace("```json", "").replace("```", "").strip()
-        elif response_text.startswith("```"):
-            response_text = response_text.replace("```", "").strip()
-        
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
         return json.loads(response_text)
+    except HTTPException:
+        raise
     except Exception as e:
-        error_str = str(e)
-        # Check for rate limiting (429 errors)
-        if "429" in error_str or "rate_limit" in error_str.lower():
-            # Check if it's quota or rate limit
-            if "quota" in error_str.lower() or "insufficient_quota" in error_str.lower():
-                raise HTTPException(
-                    status_code=402,
-                    detail="OpenAI API quota exceeded. Even with a spending limit set, you may need to:\n1. Check your actual usage at https://platform.openai.com/usage\n2. Verify your payment method is active\n3. Wait a few minutes for billing to update\n4. Check if there are any account restrictions"
-                )
-            else:
-                # Rate limit (too many requests too quickly)
-                raise HTTPException(
-                    status_code=429,
-                    detail="OpenAI API rate limit exceeded. Please wait a few seconds and try again. The API has limits on requests per minute."
-                )
-        # Check for authentication errors
-        elif "401" in error_str or "invalid_api_key" in error_str.lower() or "authentication" in error_str.lower():
-            raise HTTPException(
-                status_code=401,
-                detail="OpenAI API key is invalid or expired. Please check your OPENAI_API_KEY in .env file."
-            )
-        # Log the full error for debugging
         import traceback
         error_trace = traceback.format_exc()
         print(f"ERROR in classify_document: {str(e)}")
@@ -425,7 +457,7 @@ def classify_document(text):
 # ------------------------------
 
 def extract_bank_statement(text):
-    """Extract bank statement data using OpenAI"""
+    """Extract bank statement data using Vertex AI"""
     prompt = f"""You are an expert in financial document reconstruction.
 
 You will receive OCR text extracted from a bank statement. This OCR text may contain
@@ -485,31 +517,14 @@ Now extract the transactions from the following OCR text:
 """
     
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}  # Force JSON response
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI returned an empty response. Please try again."
-            )
-        response_text = content.strip()
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
         
         # Check if response is empty
         if not response_text:
             raise HTTPException(
                 status_code=500,
-                detail="OpenAI returned an empty response. Please try again."
+                detail="Vertex AI returned an empty response. Please try again."
             )
-        
-        # Try to parse JSON from the response
-        if response_text.startswith("```json"):
-            response_text = response_text.replace("```json", "").replace("```", "").strip()
-        elif response_text.startswith("```"):
-            response_text = response_text.replace("```", "").strip()
         
         try:
             parsed_data = json.loads(response_text)
@@ -579,7 +594,7 @@ Now extract the transactions from the following OCR text:
             print(f"JSON parsing error in extract_bank_statement. Response: {response_text[:500]}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error parsing JSON from OpenAI response: {str(json_error)}. Response preview: {response_text[:200]}"
+                detail=f"Error parsing JSON from Vertex AI response: {str(json_error)}. Response preview: {response_text[:200]}"
             )
             
     except HTTPException:
@@ -589,7 +604,7 @@ Now extract the transactions from the following OCR text:
         if "quota" in error_str.lower() or "insufficient_quota" in error_str.lower() or "429" in error_str:
             raise HTTPException(
                 status_code=402,
-                detail="OpenAI API quota exceeded. Please add credits to your OpenAI account."
+                detail="Vertex AI API quota exceeded. Please check your GCP billing and quotas."
             )
         raise HTTPException(status_code=500, detail=f"Error extracting bank statement: {str(e)}")
 
@@ -657,32 +672,16 @@ def validate_statement(rows):
     """
     
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}  # Force JSON response
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI returned an empty response. Please try again."
-            )
-        response_text = content.strip()
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
         
         # Log the response for debugging
-        print(f"OpenAI validation response (first 200 chars): {response_text[:200]}")
+        print(f"Vertex AI validation response (first 200 chars): {response_text[:200]}")
         
         # Check if response is empty
         if not response_text:
             raise HTTPException(
                 status_code=500,
-                detail="OpenAI returned an empty response. Please try again."
+                detail="Vertex AI returned an empty response. Please try again."
             )
         
         # Try to parse JSON from the response
@@ -709,7 +708,7 @@ def validate_statement(rows):
             print(f"JSON parsing error. Response was: {response_text[:500]}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error parsing JSON from OpenAI response. The API may have returned invalid JSON. Response preview: {response_text[:200]}"
+                detail=f"Error parsing JSON from Vertex AI response. The API may have returned invalid JSON. Response preview: {response_text[:200]}"
             )
             
     except HTTPException:
@@ -719,7 +718,7 @@ def validate_statement(rows):
         if "quota" in error_str.lower() or "insufficient_quota" in error_str.lower() or "429" in error_str:
             raise HTTPException(
                 status_code=402,
-                detail="OpenAI API quota exceeded. Please add credits to your OpenAI account."
+                detail="Vertex AI API quota exceeded. Please check your GCP billing and quotas."
             )
         raise HTTPException(status_code=500, detail=f"Error validating statement: {str(e)}")
 
@@ -847,16 +846,8 @@ OCR Text (if needed):
 Return ONLY valid JSON. No explanations."""
     
     try:
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": full_prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        content = res.choices[0].message.content
-        if content is None:
-            raise ValueError("OpenAI returned empty content")
-        return json.loads(content.strip())
+        response_text = generate_content_with_vertexai(full_prompt, require_json=True)
+        return json.loads(response_text)
     except Exception as e:
         return {"error": f"Error generating {report_type}: {str(e)}"}
 
@@ -934,18 +925,8 @@ OCR Text:
 """
     
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean numbers
         for key in ["opening_balance", "closing_balance", "total_deposits", "total_withdrawals", "net_balance_change", "average_monthly_balance"]:
             if key in result:
@@ -1071,18 +1052,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         for key in ["total_sales", "taxable_value", "cgst", "sgst", "igst", "cess", "output_tax", "input_tax_credit", "reverse_charge", "net_tax_payable", "interest_payable", "late_fee", "penalty", "total_payable"]:
             if key in result:
                 result[key] = clean_number(result[key])
@@ -1177,18 +1148,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         for key in ["total_debits", "total_credits", "difference"]:
             if key in result:
                 result[key] = clean_number(result[key])
@@ -1329,18 +1290,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean revenue numbers
         if "revenue" in result:
             for key in ["total_revenue", "sales", "service_income", "other_income"]:
@@ -1486,18 +1437,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean amounts
         if "amounts" in result:
             for key in ["subtotal", "discount", "taxable_amount", "cgst", "sgst", "igst", "cess", "tax_amount", "round_off", "total_amount"]:
@@ -1624,18 +1565,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean amounts
         if "amounts" in result:
             for key in ["subtotal", "discount", "taxable_amount", "cgst", "sgst", "igst", "tax_amount", "shipping_charges", "total_amount"]:
@@ -1749,18 +1680,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean earnings
         if "earnings" in result:
             for key in ["basic_pay", "hra", "conveyance_allowance", "medical_allowance", "special_allowance", "bonus", "overtime", "other_allowances", "total_earnings", "gross_salary"]:
@@ -1912,18 +1833,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         # Clean assets
         if "assets" in result:
             for key in ["current_assets", "fixed_assets", "intangible_assets", "investments", "other_assets", "total_assets"]:
@@ -2039,18 +1950,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         
         # Generate all required reports for Audit Papers
         try:
@@ -2091,18 +1992,8 @@ OCR Text:
 {text[:8000]}
 """
     try:
-        if not client:
-            raise HTTPException(
-                status_code=500,
-                detail="OpenAI API key is not configured. Please add OPENAI_API_KEY to your .env file."
-            )
-        res = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            timeout=60.0
-        )
-        result = json.loads(res.choices[0].message.content.strip())
+        response_text = generate_content_with_vertexai(prompt, require_json=True)
+        result = json.loads(response_text)
         
         # Generate all required reports for Agreement/Contract
         try:
@@ -2425,9 +2316,9 @@ async def process_file(
         # Step 1: Verify document type matches (if provided)
         if document_type:
             print(f"Classifying document type: {document_type}")
-            # Skip classification if OpenAI client is not available
-            if not client:
-                print(f"Warning: OpenAI API key not configured. Skipping classification and using provided type: {document_type}")
+            # Skip classification if Vertex AI client is not available
+            if not vertexai_client:
+                print(f"Warning: Vertex AI not configured. Skipping classification and using provided type: {document_type}")
                 detected_type = document_type
                 detected_normalized = document_type.lower().replace(" ", "_")
             else:
@@ -2493,10 +2384,10 @@ async def process_file(
             result = extract_agreement_contract(text)
         else:
             # Fallback: try to detect and extract
-            if not client:
+            if not vertexai_client:
                 return JSONResponse(
                     status_code=400,
-                    content={"error": "Document type is required when OpenAI API key is not configured. Please specify a document type."}
+                    content={"error": "Document type is required when Vertex AI is not configured. Please specify a document type or configure Vertex AI."}
                 )
             try:
                 detected_type = classify_document(text)["type"]
