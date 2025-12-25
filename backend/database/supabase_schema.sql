@@ -143,4 +143,3 @@ CREATE TRIGGER update_users_updated_at
 -- Example RLS Policy (uncomment if using Supabase Auth):
 -- CREATE POLICY "Users can view own data" ON documents
 --     FOR SELECT USING (auth.uid()::text = user_id::text);
-

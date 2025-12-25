@@ -18,6 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./firebase/useAuth";
 import Features from "./pages/Features";
 import Navbar from "./common/Navbar";
+import Footer from "./components/home/Footer";
 
 function AppContent() {
   const navigate = useNavigate();
@@ -116,6 +117,8 @@ function AppContent() {
           } 
         />
       </Routes>
+      {/* Footer always visible on all pages */}
+      <Footer />
     </>
   );
 }

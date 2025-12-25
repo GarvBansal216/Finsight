@@ -5,6 +5,7 @@ import {
   FileText, 
   Shield 
 } from 'lucide-react'; // Using lucide-react for icons
+import { GridBackground } from '@/components/ui/glowing-card';
 
 const FeaturesGrid = () => {
   const features = [
@@ -43,22 +44,23 @@ const FeaturesGrid = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F9FAFB]">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-black">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-20">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#0F172A] mb-4 tracking-[-0.01em] leading-[1.2]">
-            Powerful Features
-          </h2>
-          <p className="mt-4 text-base text-[#334155] max-w-2xl mx-auto font-normal leading-[1.6]">
-            Everything you need for intelligent document processing
-          </p>
+        {/* Glowing Card Header */}
+        <div className="mb-20">
+          <GridBackground
+            title="Powerful Features"
+            description="Everything you need for intelligent document processing"
+            showAvailability={false}
+            className="mx-auto"
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7">
           {features.map((feature, index) => (
             <div 
               key={index}
-              className="group relative bg-white p-7 lg:p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 border border-[#E5E7EB] hover:border-[#1E40AF]/30 hover:-translate-y-1 cursor-pointer"
+              className="group relative bg-[#1a1a1a] p-7 lg:p-8 rounded-[20px] shadow-[0_4px_12px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 border border-[#333333] hover:border-[#1E40AF]/30 hover:-translate-y-1 cursor-pointer"
             >
               {/* Icon Container */}
               <div className={`${feature.iconBg} w-16 h-16 lg:w-18 lg:h-18 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.06)]`}>
@@ -66,10 +68,10 @@ const FeaturesGrid = () => {
               </div>
               
               {/* Content */}
-              <h3 className="text-lg lg:text-xl font-semibold text-[#0F172A] mb-3 tracking-[-0.01em] leading-[1.3]">
+              <h3 className="text-lg lg:text-xl font-semibold text-white mb-3 tracking-[-0.01em] leading-[1.3]">
                 {feature.title}
               </h3>
-              <p className="text-[#334155] text-base leading-[1.6]">
+              <p className="text-[#E5E7EB] text-base leading-[1.6]">
                 {feature.description}
               </p>
               

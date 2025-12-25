@@ -23,6 +23,17 @@ import hashlib
 import redis
 from datetime import datetime
 
+# Initialize Supabase database connection (optional)
+try:
+    import database
+    DATABASE_AVAILABLE = True
+    print("✓ Supabase database module loaded")
+except Exception as e:
+    print(f"WARNING: Supabase database not available: {str(e)}")
+    print("Document processing will work, but results will not be saved to database.")
+    database = None
+    DATABASE_AVAILABLE = False
+
 # Initialize Redis client for caching
 redis_client = None
 REDIS_AVAILABLE = False
@@ -2695,15 +2706,22 @@ async def process_gst_files(
 @app.post("/process")
 async def process_file(
     file: UploadFile = File(...),
-    document_type: Optional[str] = Form(None)
+    document_type: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None),
+    user_email: Optional[str] = Form(None)
 ):
     """
     Process document synchronously and return results immediately.
     Uses Redis cache to return cached results instantly for identical documents.
+    Saves document and processing results to Supabase if configured.
     
     File validation:
     - Max file size: 50MB
     - Allowed file types: PDF, DOCX, DOC, XLSX, XLS, JPG, JPEG, PNG
+    
+    Optional parameters:
+    - user_id: User ID for database tracking (UUID format)
+    - user_email: User email for database tracking
     """
     # File validation constants
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB in bytes
@@ -2737,8 +2755,22 @@ async def process_file(
     print(f"{'='*60}\n")
     
     temp_file_path = None
+    document_id = None
+    processing_start_time = time.time()
+    db_user_id = None
     
     try:
+        # Handle user creation/retrieval if database is available and user info provided
+        if DATABASE_AVAILABLE and database and user_email:
+            try:
+                user = database.create_or_get_user(user_email)
+                db_user_id = user.get('user_id') if isinstance(user.get('user_id'), str) else str(user.get('user_id'))
+                print(f"✓ Database: Using user {db_user_id} ({user_email})")
+            except Exception as e:
+                print(f"Warning: Could not create/get user in database: {str(e)}")
+        elif user_id:
+            db_user_id = user_id
+        
         # Read file content with size validation
         content = b""
         total_size = 0
@@ -2773,6 +2805,39 @@ async def process_file(
             )
         
         print(f"✓ File validation passed: {filename} ({total_size / (1024*1024):.2f}MB, {file_extension})")
+        
+        # Save document to database if available
+        if DATABASE_AVAILABLE and database and db_user_id:
+            try:
+                import tempfile
+                temp_dir = tempfile.gettempdir()
+                # Create a storage path (in production, this would be S3 or similar)
+                storage_path = f"uploads/{db_user_id}/{filename}"
+                
+                doc_record = database.create_document(
+                    user_id=db_user_id,
+                    original_filename=filename,
+                    file_type=file.content_type or file_extension,
+                    file_size=total_size,
+                    storage_path=storage_path,
+                    document_type=document_type
+                )
+                document_id = str(doc_record.get('document_id'))
+                print(f"✓ Database: Document record created: {document_id}")
+                
+                # Update status to processing
+                database.update_document_status(document_id, 'processing')
+                
+                # Add processing history
+                database.add_processing_history(
+                    user_id=db_user_id,
+                    document_id=document_id,
+                    action_type='processing_started',
+                    metadata={'filename': filename, 'document_type': document_type}
+                )
+            except Exception as e:
+                print(f"Warning: Could not save document to database: {str(e)}")
+                # Continue processing even if database save fails
         
         # Check cache for complete document processing result
         if REDIS_AVAILABLE and redis_client:
@@ -2863,6 +2928,122 @@ async def process_file(
         
         print(f"Processing completed successfully!")
         
+        # Save processing results to database if available
+        processing_end_time = time.time()
+        processing_time_ms = int((processing_end_time - processing_start_time) * 1000)
+        
+        if DATABASE_AVAILABLE and database:
+            # Try to save even if we don't have document_id (might have failed during creation)
+            if not document_id and db_user_id:
+                print(f"⚠️ Database: Document ID not available, attempting to create document record...")
+                try:
+                    import tempfile
+                    temp_dir = tempfile.gettempdir()
+                    storage_path = f"uploads/{db_user_id}/{filename}"
+                    
+                    doc_record = database.create_document(
+                        user_id=db_user_id,
+                        original_filename=filename,
+                        file_type=file.content_type or file_extension,
+                        file_size=total_size,
+                        storage_path=storage_path,
+                        document_type=document_type
+                    )
+                    document_id = str(doc_record.get('document_id'))
+                    print(f"✓ Database: Document record created (retry): {document_id}")
+                except Exception as e:
+                    print(f"Warning: Could not create document record (retry): {str(e)}")
+            
+            if document_id:
+                try:
+                    # Extract insights, summary stats, and anomalies from result
+                    insights = result.get('insights', {})
+                    summary_stats = result.get('summary_stats', {})
+                    anomalies = result.get('anomalies', [])
+                    
+                    # Save processing result
+                    database.save_processing_result(
+                        document_id=document_id,
+                        extracted_data=result,
+                        insights=insights if insights else None,
+                        summary_stats=summary_stats if summary_stats else None,
+                        anomalies=anomalies if anomalies else None,
+                        output_files=None  # Could add file paths here if files are generated
+                    )
+                    
+                    # Update document status to completed
+                    database.update_document_status(document_id, 'completed')
+                    
+                    # Save analytics
+                    database.save_analytics(
+                        user_id=db_user_id,
+                        document_id=document_id,
+                        processing_time_ms=processing_time_ms,
+                        success_rate=100.0,  # If we got here, it was successful
+                        document_type=document_type
+                    )
+                    
+                    # Add processing history
+                    database.add_processing_history(
+                        user_id=db_user_id,
+                        document_id=document_id,
+                        action_type='processing_completed',
+                        metadata={'processing_time_ms': processing_time_ms}
+                    )
+                    
+                    print(f"✓ Database: Processing results saved for document {document_id}")
+                except Exception as e:
+                    print(f"❌ Error: Could not save processing results to database: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    # Continue even if database save fails
+            else:
+                print(f"⚠️ Database: Skipping save - no document_id available (user_email/user_id may not have been provided)")
+            try:
+                # Extract insights, summary stats, and anomalies from result
+                insights = result.get('insights', {})
+                summary_stats = result.get('summary_stats', {})
+                anomalies = result.get('anomalies', [])
+                
+                # Save processing result
+                database.save_processing_result(
+                    document_id=document_id,
+                    extracted_data=result,
+                    insights=insights if insights else None,
+                    summary_stats=summary_stats if summary_stats else None,
+                    anomalies=anomalies if anomalies else None,
+                    output_files=None  # Could add file paths here if files are generated
+                )
+                
+                # Update document status to completed
+                database.update_document_status(document_id, 'completed')
+                
+                # Save analytics
+                database.save_analytics(
+                    user_id=db_user_id,
+                    document_id=document_id,
+                    processing_time_ms=processing_time_ms,
+                    success_rate=100.0,  # If we got here, it was successful
+                    document_type=document_type
+                )
+                
+                # Add processing history
+                database.add_processing_history(
+                    user_id=db_user_id,
+                    document_id=document_id,
+                    action_type='processing_completed',
+                    metadata={'processing_time_ms': processing_time_ms}
+                )
+                
+                print(f"✓ Database: Processing results saved for document {document_id}")
+            except Exception as e:
+                print(f"❌ Error: Could not save processing results to database: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Continue even if database save fails
+            else:
+                print(f"⚠️ Database: Skipping save - no document_id available (user_email/user_id may not have been provided)")
+        
         # Cache the complete result if Redis is available
         if REDIS_AVAILABLE and redis_client:
             try:
@@ -2876,12 +3057,27 @@ async def process_file(
         return JSONResponse(content=result)
     
     except HTTPException:
+        # Update document status to failed if we have a document_id
+        if DATABASE_AVAILABLE and database and document_id:
+            try:
+                database.update_document_status(document_id, 'failed', error_message="HTTP Exception during processing")
+            except Exception as db_err:
+                print(f"Warning: Could not update document status in database: {str(db_err)}")
         raise
     except Exception as e:
         import traceback
-        print(f"Error processing file: {str(e)}")
+        error_message = str(e)
+        print(f"Error processing file: {error_message}")
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        
+        # Update document status to failed if we have a document_id
+        if DATABASE_AVAILABLE and database and document_id:
+            try:
+                database.update_document_status(document_id, 'failed', error_message=error_message[:500])  # Limit error message length
+            except Exception as db_err:
+                print(f"Warning: Could not update document status in database: {str(db_err)}")
+        
+        raise HTTPException(status_code=500, detail=f"Error processing file: {error_message}")
     
     finally:
         # Clean up temporary file

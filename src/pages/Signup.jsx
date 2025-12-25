@@ -67,8 +67,8 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F9FAFB] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-5xl bg-[#FFFFFF] rounded-3xl shadow-premium-xl overflow-hidden border border-[#E5E7EB]">
+    <div className="min-h-screen w-full bg-black flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-5xl bg-[#1a1a1a] rounded-3xl shadow-premium-xl overflow-hidden border border-[#333333]">
         <div className="flex flex-col lg:flex-row min-h-[700px]">
           
           {/* LEFT SIDE - Branded Section */}
@@ -102,10 +102,10 @@ const Signup = () => {
           {/* RIGHT SIDE - Signup Form */}
           <div className="w-full lg:w-1/2 bg-white p-10 lg:p-14 flex flex-col justify-center overflow-y-auto">
             <div className="mb-8">
-              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#0F172A] mb-2 tracking-[-0.01em] leading-[1.2]">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 tracking-[-0.01em] leading-[1.2]">
                 Sign Up
               </h1>
-              <p className="text-base text-[#475569] leading-[1.6]">
+              <p className="text-base text-[#E5E7EB] leading-[1.6]">
                 Create your account to get started
               </p>
             </div>
@@ -128,7 +128,7 @@ const Signup = () => {
                   placeholder="Full Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
+                  className="w-full pl-12 pr-4 py-3.5 bg-black border border-[#333333] rounded-xl text-white placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
                   required
                 />
               </div>
@@ -143,7 +143,7 @@ const Signup = () => {
                   placeholder="Email Address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
+                  className="w-full pl-12 pr-4 py-3.5 bg-black border border-[#333333] rounded-xl text-white placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
                   required
                 />
               </div>
@@ -158,7 +158,7 @@ const Signup = () => {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-24 py-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
+                  className="w-full pl-12 pr-24 py-3.5 bg-black border border-[#333333] rounded-xl text-white placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
                   required
                 />
                 <button
@@ -181,7 +181,7 @@ const Signup = () => {
                   placeholder="Confirm Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full pl-12 pr-24 py-3.5 bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl text-[#0F172A] placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
+                  className="w-full pl-12 pr-24 py-3.5 bg-black border border-[#333333] rounded-xl text-white placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/50 focus:border-[#1E40AF] transition-all duration-200"
                   required
                 />
                 <button
@@ -207,7 +207,7 @@ const Signup = () => {
             {/* Divider */}
             <div className="relative my-8">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#E5E7EB]"></div>
+                <div className="w-full border-t border-[#333333]"></div>
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-4 bg-white text-[#64748B] font-semibold">OR</span>
@@ -218,7 +218,7 @@ const Signup = () => {
             <button
               onClick={handleGoogleSignup}
               disabled={loading}
-              className="w-full py-3.5 bg-[#FFFFFF] border-2 border-[#E5E7EB] hover:border-[#1E40AF]/30 text-[#334155] font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 bg-[#1a1a1a] border-2 border-[#333333] hover:border-[#1E40AF]/30 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FcGoogle className="w-5 h-5" />
               Sign up with Google

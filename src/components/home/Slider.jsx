@@ -11,9 +11,9 @@ export default function LogoSlider() {
   const logos = [slider1, slider2, slider3, slider4, slider5, slider6, slider7];
 
   return (
-    <section className="w-full py-20 lg:py-24 overflow-hidden bg-[#F9FAFB]">
+    <section className="w-full py-20 lg:py-24 overflow-hidden bg-black">
       <div className="mb-16 lg:mb-20 text-center max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p className="text-[#0F172A] leading-snug font-bold text-3xl sm:text-4xl md:text-5xl tracking-[-0.02em]">
+        <p className="text-white leading-snug font-bold text-3xl sm:text-4xl md:text-5xl tracking-[-0.02em]">
           Trusted by 1000+ CA firms and enterprise finance teams{" "}
           <span className="block md:inline">for high-volume processing.</span>
         </p>

@@ -1,41 +1,38 @@
-import Hero from "../components/home/Hero";
+import { Hero as NewHero } from "../components/ui/saa-s-template";
 import FeaturesGrid from "../components/home/FeaturesGrid";
 import HowItWorks from "../components/home/HowItWork";
-import Footer from "../components/home/Footer";
 import FAQ from "../components/home/FAQ";
-import Pricing from "../components/home/Pricing";
 import Slider from "../components/home/Slider";
 
 const Home = () => {
   return (
-    <div className="relative min-h-screen">
-      {/* Background Image */}
-      <div 
-        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/fintech (2).jpg')",
-        }}
-      >
-        {/* Strong base dark overlay for readability */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(2, 6, 23, 0.72), rgba(2, 6, 23, 0.55))'
-          }}
-        ></div>
-        {/* Subtle brand-tinted gradient for depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1E40AF]/8 via-transparent to-[#8B5CF6]/8"></div>
-      </div>
-      
+    <div className="relative min-h-screen bg-black">
       {/* Content */}
       <div className="relative z-10">
-        <Hero />
-        <FeaturesGrid />
-        <HowItWorks />
-        <Slider />
-        <Pricing />
-        <FAQ />
-        <Footer />
+        {/* New hero section with dark background */}
+        <div className="bg-black">
+          <div className="relative">
+            {/* Hero Heading */}
+            <div className="text-center py-8 px-6">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4">
+                Welcome to <span className="bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">FinSight</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                AI-Powered Financial Intelligence Platform
+              </p>
+            </div>
+            <NewHero />
+          </div>
+        </div>
+        {/* Rest of the sections */}
+        <div className="relative min-h-screen bg-black">
+          <div className="relative z-10">
+            <FeaturesGrid />
+            <HowItWorks />
+            <Slider />
+            <FAQ />
+          </div>
+        </div>
       </div>
     </div>
   );

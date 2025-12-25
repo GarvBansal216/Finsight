@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import logo from "../../assets/logo.png"
 import { 
   Mail, 
@@ -14,7 +15,7 @@ import {
 const Footer = () => {
   const footerLinks = {
     company: [
-      { name: 'About Us', href: '#' },
+      { name: 'About Us', href: '/about' },
       { name: 'Careers', href: '#' },
       { name: 'Blog', href: '#' },
       { name: 'Partners', href: '#' }
@@ -41,6 +42,19 @@ const Footer = () => {
 
   return (
     <footer className="relative bg-[#0F172A] text-[#64748B] py-20 overflow-hidden">
+      {/* Grid Background Pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.2]"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.4) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px',
+          backgroundPosition: '0 0, 0 0'
+        }}
+      ></div>
+      
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden opacity-[0.08]">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#1E40AF] rounded-full mix-blend-multiply filter blur-3xl"></div>
@@ -54,12 +68,12 @@ const Footer = () => {
           
           {/* LOGO + DESCRIPTION */}
           <div className="lg:w-1/2">
-            <div className="flex items-center mb-6">
+            <Link to="/" className="flex items-center mb-6">
               <div className="w-14 h-14 bg-gradient-to-r from-[#1E40AF] to-[#8B5CF6] rounded-xl flex items-center justify-center mr-3 shadow-lg">
                 <img src={logo} alt="FinSight Logo" width={40} height={40}/>
               </div>
               <span className="text-2xl font-bold text-white">FINSIGHT</span>
-            </div>
+            </Link>
 
             <p className="text-[#64748B] mb-8 max-w-md leading-relaxed text-[15px]">
               Transform your financial documents into actionable insights with our AI-powered platform.
@@ -91,10 +105,10 @@ const Footer = () => {
               <ul className="space-y-3">
                 {footerLinks.company.map((link, index) => (
                   <li key={index}>
-                    <a href={link.href} className="flex items-center text-[#64748B] hover:text-[#22D3EE] transition-colors duration-200 group">
+                    <Link to={link.href} className="flex items-center text-[#64748B] hover:text-[#22D3EE] transition-colors duration-200 group">
                       <ChevronRight className="w-4 h-4 mr-2 text-[#64748B] group-hover:text-[#22D3EE] transition-colors" />
                       <span>{link.name}</span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -106,10 +120,10 @@ const Footer = () => {
               <ul className="space-y-3">
                 {footerLinks.support.map((link, index) => (
                   <li key={index}>
-                    <a href={link.href} className="flex items-center text-[#64748B] hover:text-[#22D3EE] transition-colors duration-200 group">
+                    <Link to={link.href} className="flex items-center text-[#64748B] hover:text-[#22D3EE] transition-colors duration-200 group">
                       <ChevronRight className="w-4 h-4 mr-2 text-[#64748B] group-hover:text-[#22D3EE] transition-colors" />
                       <span>{link.name}</span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>

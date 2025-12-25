@@ -6,6 +6,7 @@ import {
   Download,
   ChevronRight
 } from 'lucide-react';
+import { GridBackground } from '@/components/ui/glowing-card';
 
 const HowItWorks = () => {
 
@@ -45,17 +46,17 @@ const HowItWorks = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F9FAFB]">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-black">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
-        <div className="text-center mb-20">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#0F172A] mb-4 tracking-[-0.01em] leading-[1.2]">
-            How It Works
-          </h2>
-          <p className="mt-4 text-base text-[#334155] max-w-2xl mx-auto font-normal leading-[1.6]">
-            Transform your documents into actionable insights in just four simple steps
-          </p>
+        {/* Glowing Card Header */}
+        <div className="mb-20">
+          <GridBackground
+            title="How It Works"
+            description="Transform your documents into actionable insights in just four simple steps"
+            showAvailability={false}
+            className="mx-auto"
+          />
         </div>
 
         {/* Desktop - Horizontal Layout */}
@@ -69,7 +70,7 @@ const HowItWorks = () => {
                 <div key={index} className="flex flex-col items-center relative flex-1">
 
                   {/* Gradient Circle */}
-                  <div className={`w-44 h-44 rounded-full bg-white border-4 ${step.borderColor} shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center mb-6 relative group-hover:scale-105 transition-transform duration-300 z-10`}>
+                  <div className={`w-44 h-44 rounded-full bg-[#1a1a1a] border-4 ${step.borderColor} shadow-[0_8px_24px_rgba(0,0,0,0.12)] flex items-center justify-center mb-6 relative group-hover:scale-105 transition-transform duration-300 z-10`}>
                     <div className={`w-full h-full rounded-full flex items-center justify-center ${step.bgColor}`}>
                       {step.icon}
                     </div>
@@ -77,11 +78,11 @@ const HowItWorks = () => {
 
                   {/* Step Content */}
                   <div className="text-center px-2">
-                    <div className="text-sm font-bold text-[#64748B] mb-2">STEP {step.number}</div>
-                    <h3 className="text-lg font-semibold text-[#0F172A] mb-3 tracking-[-0.01em] leading-[1.3]">
+                    <div className="text-sm font-bold text-[#9CA3AF] mb-2">STEP {step.number}</div>
+                    <h3 className="text-lg font-semibold text-white mb-3 tracking-[-0.01em] leading-[1.3]">
                       {step.title}
                     </h3>
-                    <p className="text-base text-[#334155] leading-[1.6]">
+                    <p className="text-base text-[#E5E7EB] leading-[1.6]">
                       {step.description}
                     </p>
                   </div>
@@ -89,7 +90,7 @@ const HowItWorks = () => {
                   {/* Arrow - Centered on the connecting line */}
                   {index < steps.length - 1 && (
                     <div className="absolute top-[82px] right-0 translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center">
-                      <div className="bg-white rounded-full p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.1)] border border-[#E5E7EB]">
+                      <div className="bg-[#1a1a1a] rounded-full p-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.1)] border border-[#333333]">
                         <ChevronRight className="w-5 h-5 text-[#8B5CF6]" strokeWidth={2.5} />
                       </div>
                     </div>
@@ -112,7 +113,7 @@ const HowItWorks = () => {
                   
                   {/* Gradient Circle Mobile */}
                   <div className="relative">
-                    <div className={`w-16 h-16 rounded-full bg-white border-4 ${step.borderColor} shadow-lg flex items-center justify-center relative`}>
+                    <div className={`w-16 h-16 rounded-full bg-[#1a1a1a] border-4 ${step.borderColor} shadow-lg flex items-center justify-center relative`}>
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center ${step.bgColor}`}>
                         {step.icon}
                       </div>
@@ -147,7 +148,7 @@ const HowItWorks = () => {
         <div className="hidden md:block lg:hidden">
           <div className="grid grid-cols-2 gap-6">
             {steps.map((step, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] border border-[#E5E7EB] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
+              <div key={index} className="bg-[#1a1a1a] p-6 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] border border-[#333333] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-300">
                 <div className="flex items-start">
                   
                   <div className={`w-14 h-14 rounded-xl flex items-center justify-center mr-4 ${step.bgColor} border ${step.borderColor}`}>

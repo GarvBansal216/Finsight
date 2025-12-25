@@ -54,13 +54,13 @@ const Pricing = () => {
   ];
 
   return (
-    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-[#F9FAFB]">
+    <section className="py-24 px-4 sm:px-6 lg:px-8 bg-black">
       {/* Heading */}
       <div className="max-w-4xl mx-auto text-center mb-20">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#0F172A] mb-6 tracking-[-0.01em] leading-[1.15]">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-[-0.01em] leading-[1.15]">
           Simple, Transparent Pricing
         </h1>
-        <p className="text-base text-[#334155] max-w-2xl mx-auto font-normal leading-[1.6]">
+        <p className="text-base text-white/80 max-w-2xl mx-auto font-normal leading-[1.6]">
           Choose the plan that automates your financial journey. No hidden fees —
           ever.
         </p>
@@ -91,21 +91,21 @@ const Pricing = () => {
             )}
 
             <div className="p-6 pt-12">
-              <h3 className="text-xl font-bold text-[#0F172A] mb-3 tracking-[-0.01em] leading-[1.3]">
+              <h3 className="text-xl font-bold text-white mb-3 tracking-[-0.01em] leading-[1.3]">
                 {plan.name}
               </h3>
-              <p className="text-base text-[#334155] mb-8 leading-[1.6]">{plan.description}</p>
+              <p className="text-base text-white/80 mb-8 leading-[1.6]">{plan.description}</p>
 
               <div className="flex items-baseline mb-8">
                 <span className={`text-4xl md:text-5xl font-extrabold ${
                   plan.popular 
                     ? "bg-gradient-to-r from-[#1E40AF] to-[#8B5CF6] bg-clip-text text-transparent" 
-                    : "text-[#0F172A]"
+                    : "text-white"
                 }`}>
                   {plan.price}
                 </span>
                 {plan.period && (
-                  <span className="text-[#64748B] ml-2 font-medium">{plan.period}</span>
+                  <span className="text-white/60 ml-2 font-medium">{plan.period}</span>
                 )}
               </div>
 
@@ -115,7 +115,7 @@ const Pricing = () => {
                     <CheckCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 mr-3 ${
                       plan.popular ? "text-[#1E40AF]" : "text-[#22D3EE]"
                     }`} />
-                    <span className="text-base text-[#334155] leading-[1.6]">{feature}</span>
+                    <span className="text-base text-white/80 leading-[1.6]">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -126,7 +126,7 @@ const Pricing = () => {
                     ? "bg-gradient-to-r from-[#1E40AF] to-[#8B5CF6] hover:from-[#1E3A8A] hover:to-[#7C3AED] text-white shadow-[0_4px_16px_rgba(30,64,175,0.35)] hover:shadow-[0_8px_24px_rgba(30,64,175,0.45)]"
                     : plan.name === "Enterprise"
                     ? "bg-[#0F172A] hover:bg-[#1E293B] text-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.2)]"
-                    : "bg-[#F9FAFB] hover:bg-[#E5E7EB] text-[#0F172A] border border-[#E5E7EB] hover:border-[#E5E7EB]"
+                    : "bg-white/10 hover:bg-white/20 text-white border border-white/20 hover:border-white/30"
                 }`}
               >
                 {plan.cta}

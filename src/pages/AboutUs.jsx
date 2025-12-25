@@ -9,6 +9,7 @@ import {
   Brain,
   CheckCircle
 } from "lucide-react";
+import HeroSection from "../components/ui/a-modern-hero-section";
 import logo from "../assets/logo.png";
 
 const AboutUs = () => {
@@ -45,54 +46,18 @@ const AboutUs = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] via-blue-50/20 to-purple-50/20">
+    <div className="min-h-screen bg-black">
       {/* Hero Section */}
-      <section className="relative py-20 md:py-32 lg:py-40 overflow-hidden">
-        {/* Background decorative elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-[#1E40AF]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[#8B5CF6]/10 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-2000"></div>
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            {/* Logo */}
-            <div className="flex justify-center mb-8">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1E40AF]/20 via-[#8B5CF6]/20 to-[#22D3EE]/20 blur-xl opacity-50"></div>
-                <div className="relative p-4 rounded-2xl bg-white/90 backdrop-blur-sm border border-[#E5E7EB] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                  <img src={logo} alt="FinSight Logo" className="h-16 w-16 lg:h-20 lg:w-20" />
-                </div>
-              </div>
-            </div>
-
-            {/* Badge */}
-            <div className="mb-8 inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/80 backdrop-blur-sm text-[#0F172A] text-sm font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-[#E5E7EB]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22D3EE] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1E40AF]"></span>
-              </span>
-              Our Story
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#0F172A] mb-6 leading-[1.15] tracking-[-0.01em]">
-              About FinSight
-            </h1>
-            <p className="text-lg md:text-xl lg:text-2xl text-[#334155] max-w-3xl mx-auto leading-[1.6] font-medium">
-              Transforming financial document processing with intelligent automation
-            </p>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* Company Story */}
       <section className="py-16 md:py-24 lg:py-32">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)] border-2 border-[#E5E7EB] p-8 md:p-12 lg:p-16">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] mb-8 tracking-[-0.01em] leading-[1.2]">
+          <div className="bg-gray-900/80 backdrop-blur-sm rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.3)] border-2 border-gray-800 p-8 md:p-12 lg:p-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-8 tracking-[-0.01em] leading-[1.2]">
               Our Story
             </h2>
-            <div className="space-y-6 text-base md:text-lg text-[#334155] leading-[1.7] font-normal">
+            <div className="space-y-6 text-base md:text-lg text-gray-300 leading-[1.7] font-normal">
               <p>
                 FinSight was born from a simple observation: finance teams spend countless hours 
                 manually processing documents, extracting data, and reconciling financial records. 
@@ -116,13 +81,13 @@ const AboutUs = () => {
       </section>
 
       {/* Our Values */}
-      <section className="py-16 md:py-24 lg:py-32 bg-white/50 backdrop-blur-sm">
+      <section className="py-16 md:py-24 lg:py-32 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 lg:mb-20">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] mb-4 tracking-[-0.01em] leading-[1.2]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 tracking-[-0.01em] leading-[1.2]">
               Our Values
             </h2>
-            <p className="text-base md:text-lg text-[#64748B] max-w-2xl mx-auto leading-[1.6] font-medium">
+            <p className="text-base md:text-lg text-gray-400 max-w-2xl mx-auto leading-[1.6] font-medium">
               The principles that guide everything we do
             </p>
           </div>
@@ -130,15 +95,15 @@ const AboutUs = () => {
             {values.map((value, index) => (
               <div
                 key={index}
-                className="group bg-white rounded-[20px] p-7 lg:p-8 shadow-[0_4px_12px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] border-2 border-[#E5E7EB] hover:border-[#1E40AF]/30 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1"
+                className="group bg-gray-900 rounded-[20px] p-7 lg:p-8 shadow-[0_4px_12px_rgba(0,0,0,0.5),0_1px_4px_rgba(0,0,0,0.3)] border-2 border-gray-800 hover:border-[#1E40AF]/50 hover:shadow-[0_8px_24px_rgba(30,64,175,0.3),0_2px_8px_rgba(0,0,0,0.5)] transition-all duration-300 hover:-translate-y-1"
               >
-                <div className="mb-6 w-14 h-14 rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+                <div className="mb-6 w-14 h-14 rounded-xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-[0_2px_8px_rgba(30,64,175,0.4)]">
                   {value.icon}
                 </div>
-                <h3 className="text-xl lg:text-2xl font-bold text-[#0F172A] mb-4 tracking-[-0.01em] leading-[1.3]">
+                <h3 className="text-xl lg:text-2xl font-bold text-white mb-4 tracking-[-0.01em] leading-[1.3]">
                   {value.title}
                 </h3>
-                <p className="text-[#64748B] leading-[1.6] font-medium">{value.description}</p>
+                <p className="text-gray-300 leading-[1.6] font-medium">{value.description}</p>
               </div>
             ))}
           </div>
@@ -146,24 +111,24 @@ const AboutUs = () => {
       </section>
 
       {/* What We Offer */}
-      <section className="py-16 md:py-24 lg:py-32">
+      <section className="py-16 md:py-24 lg:py-32 bg-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)] border-2 border-[#E5E7EB] p-8 md:p-12 lg:p-16">
+          <div className="bg-gray-900/80 backdrop-blur-sm rounded-[20px] shadow-[0_8px_24px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.3)] border-2 border-gray-800 p-8 md:p-12 lg:p-16">
             <div className="flex items-center gap-4 mb-10 lg:mb-12">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center shadow-[0_4px_12px_rgba(30,64,175,0.15)]">
-                <Brain className="w-7 h-7 text-[#1E40AF]" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] flex items-center justify-center shadow-[0_4px_12px_rgba(30,64,175,0.4)]">
+                <Brain className="w-7 h-7 text-white" />
               </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] tracking-[-0.01em] leading-[1.2]">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-[-0.01em] leading-[1.2]">
                 What We Offer
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
               {features.map((feature, index) => (
                 <div key={index} className="flex items-start group">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center mr-4 mt-1 flex-shrink-0 shadow-[0_2px_8px_rgba(16,185,129,0.25)] group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center mr-4 mt-1 flex-shrink-0 shadow-[0_2px_8px_rgba(16,185,129,0.5)] group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-[#334155] text-base md:text-lg leading-[1.7] font-medium flex-1">{feature}</p>
+                  <p className="text-gray-300 text-base md:text-lg leading-[1.7] font-medium flex-1">{feature}</p>
                 </div>
               ))}
             </div>
@@ -172,16 +137,16 @@ const AboutUs = () => {
       </section>
 
       {/* Technology Section */}
-      <section className="py-16 md:py-24 lg:py-32 bg-white/50 backdrop-blur-sm">
+      <section className="py-16 md:py-24 lg:py-32 bg-black">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE] flex items-center justify-center mx-auto mb-6 shadow-[0_4px_12px_rgba(30,64,175,0.15)]">
-              <TrendingUp className="w-8 h-8 lg:w-10 lg:h-10 text-[#1E40AF]" />
+            <div className="w-16 h-16 lg:w-20 lg:h-20 rounded-2xl bg-gradient-to-br from-[#1E3A8A] to-[#1E40AF] flex items-center justify-center mx-auto mb-6 shadow-[0_4px_12px_rgba(30,64,175,0.4)]">
+              <TrendingUp className="w-8 h-8 lg:w-10 lg:h-10 text-white" />
             </div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#0F172A] mb-6 tracking-[-0.01em] leading-[1.2]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 tracking-[-0.01em] leading-[1.2]">
               Powered by Advanced AI
             </h2>
-            <p className="text-base md:text-lg lg:text-xl text-[#64748B] max-w-3xl mx-auto leading-[1.7] font-medium">
+            <p className="text-base md:text-lg lg:text-xl text-gray-300 max-w-3xl mx-auto leading-[1.7] font-medium">
               Our Cortex AI engine uses machine learning and natural language processing 
               to understand, extract, and analyze financial documents with unprecedented 
               accuracy and speed.

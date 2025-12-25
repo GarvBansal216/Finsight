@@ -71,7 +71,7 @@ const Navbar = () => {
         <div className="flex items-center gap-4">
           <Link
             to="/login"
-            className="text-[#334155] hover:text-[#1E40AF] px-5 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg hover:bg-[#F9FAFB]"
+            className="text-[#E5E7EB] hover:text-[#1E40AF] px-5 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg hover:bg-[#1a1a1a]"
           >
             Login
           </Link>
@@ -94,8 +94,8 @@ const Navbar = () => {
         className={({ isActive }) =>
           `block px-4 py-3.5 rounded-xl text-base font-medium transition-all duration-200 ${
             isActive
-              ? "text-[#1E40AF] bg-[#1E40AF]/10 shadow-sm"
-              : "text-[#334155] hover:text-[#1E40AF] hover:bg-[#F9FAFB]"
+              ? "text-[#1E40AF] bg-[#1E40AF]/20 shadow-sm"
+              : "text-[#E5E7EB] hover:text-[#1E40AF] hover:bg-[#1a1a1a]"
           }`
         }
       >
@@ -108,8 +108,8 @@ const Navbar = () => {
         className={({ isActive }) =>
           `block px-4 py-3.5 rounded-xl text-base font-medium transition-all duration-200 ${
             isActive
-              ? "text-[#1E40AF] bg-[#1E40AF]/10 shadow-sm"
-              : "text-[#334155] hover:text-[#1E40AF] hover:bg-[#F9FAFB]"
+              ? "text-[#1E40AF] bg-[#1E40AF]/20 shadow-sm"
+              : "text-[#E5E7EB] hover:text-[#1E40AF] hover:bg-[#1a1a1a]"
           }`
         }
       >
@@ -122,8 +122,8 @@ const Navbar = () => {
         className={({ isActive }) =>
           `block px-4 py-3.5 rounded-xl text-base font-medium transition-all duration-200 ${
             isActive
-              ? "text-[#1E40AF] bg-[#1E40AF]/10 shadow-sm"
-              : "text-[#334155] hover:text-[#1E40AF] hover:bg-[#F9FAFB]"
+              ? "text-[#1E40AF] bg-[#1E40AF]/20 shadow-sm"
+              : "text-[#E5E7EB] hover:text-[#1E40AF] hover:bg-[#1a1a1a]"
           }`
         }
       >
@@ -136,8 +136,8 @@ const Navbar = () => {
         className={({ isActive }) =>
           `block px-4 py-3.5 rounded-xl text-base font-medium transition-all duration-200 ${
             isActive
-              ? "text-[#1E40AF] bg-[#1E40AF]/10 shadow-sm"
-              : "text-[#334155] hover:text-[#1E40AF] hover:bg-[#F9FAFB]"
+              ? "text-[#1E40AF] bg-[#1E40AF]/20 shadow-sm"
+              : "text-[#E5E7EB] hover:text-[#1E40AF] hover:bg-[#1a1a1a]"
           }`
         }
       >
@@ -185,9 +185,9 @@ const Navbar = () => {
       authButtons={authButtons}
       mobileMenuItems={mobileMenuItems}
       scrolled={scrolled}
-      backgroundColor="rgba(255, 255, 255, 0.95)"
-      textColor="#0F172A"
-      highlightColor="rgba(30, 64, 175, 0.1)"
+      backgroundColor="rgba(0, 0, 0, 0.95)"
+      textColor="#FFFFFF"
+      highlightColor="rgba(30, 64, 175, 0.3)"
       glowIntensity={3}
       className="px-4"
       showLabelsOnMobile={false}
