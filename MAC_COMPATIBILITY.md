@@ -2,7 +2,7 @@
 
 This document describes the changes made to make the FinSight project compatible with macOS.
 
-## Changes Made
+## Changes Mad
 
 ### 1. Cross-Platform Executable Detection (`backend/app.py`)
 - Added OS detection using `platform.system()`
