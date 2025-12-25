@@ -15,6 +15,14 @@ load_dotenv()
 
 # Lazy initialization of Vertex AI client
 _client = None
+_gemini_api_key = None
+_gemini_api_key_available = False
+
+# Check for Gemini API key (prioritize this - no ADC setup needed)
+_gemini_api_key = os.getenv("GEMINI_API_KEY")
+if _gemini_api_key:
+    _gemini_api_key_available = True
+    print("✓ Report generators: Using Gemini API (API key provided)")
 
 def get_vertexai_client():
     """Get or initialize Vertex AI client"""
@@ -25,40 +33,158 @@ def get_vertexai_client():
         model_name = os.getenv("VERTEXAI_MODEL", "gemini-1.5-pro")
         
         if not project_id:
-            raise ValueError("VERTEXAI_PROJECT_ID environment variable is not set. Please add it to your .env file.")
+            return None
         
-        vertexai.init(project=project_id, location=location)
-        _client = GenerativeModel(model_name)
+        try:
+            vertexai.init(project=project_id, location=location)
+            _client = GenerativeModel(model_name)
+        except Exception as e:
+            print(f"WARNING: Vertex AI initialization failed: {str(e)}")
+            return None
     return _client
 
-def generate_content_vertexai(prompt: str, require_json: bool = False):
+def generate_content_vertexai(prompt: str, require_json: bool = False, max_retries: int = 3):
     """
-    Helper function to generate content using Vertex AI
+    Helper function to generate content using Gemini API (preferred) or Vertex AI as fallback
     
     Args:
         prompt: The prompt to send to the model
         require_json: If True, expects JSON response and adds JSON instruction
+        max_retries: Maximum number of retry attempts
     
     Returns:
         str: The generated content
     """
+    # Prioritize Gemini API if available (no ADC setup needed)
+    if _gemini_api_key_available:
+        # Use Gemini API directly
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=_gemini_api_key)
+            
+            if require_json:
+                full_prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or any explanations."
+            else:
+                full_prompt = prompt
+            
+            # Try multiple Gemini models
+            model_names = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+            
+            for model_name in model_names:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(full_prompt)
+                    
+                    if not response or not response.text:
+                        continue
+                    
+                    content = response.text.strip()
+                    
+                    # Clean up JSON if needed
+                    if require_json:
+                        if content.startswith("```json"):
+                            content = content.replace("```json", "").replace("```", "").strip()
+                        elif content.startswith("```"):
+                            content = content.replace("```", "").strip()
+                    
+                    print(f"✓ Report generator: Successfully used Gemini API (model: {model_name})")
+                    return content
+                except Exception as gemini_error:
+                    error_str_gemini = str(gemini_error)
+                    if "404" in error_str_gemini and "not found" in error_str_gemini.lower():
+                        print(f"Model {model_name} not available, trying next model...")
+                        continue
+                    # If last model failed, try Vertex AI as fallback
+                    if model_name == model_names[-1]:
+                        print(f"All Gemini models failed, trying Vertex AI as fallback...")
+                        break
+            
+            # If all Gemini models failed, fall through to Vertex AI
+        except Exception as e:
+            print(f"⚠️ Gemini API error, trying Vertex AI as fallback: {str(e)}")
+            # Fall through to Vertex AI
+    
+    # Try Vertex AI as fallback if Gemini API is not available or failed
     client = get_vertexai_client()
-    if require_json:
-        prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. No markdown formatting, code blocks, or explanations."
     
-    response = client.generate_content(prompt)
-    if not response or not response.text:
-        raise ValueError("Vertex AI returned empty content")
+    if client:
+        try:
+            if require_json:
+                full_prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. No markdown formatting, code blocks, or explanations."
+            else:
+                full_prompt = prompt
+            
+            response = client.generate_content(full_prompt)
+            if not response or not response.text:
+                raise ValueError("Vertex AI returned empty content")
+            
+            content = response.text.strip()
+            # Clean JSON if needed
+            if require_json:
+                if content.startswith("```json"):
+                    content = content.replace("```json", "").replace("```", "").strip()
+                elif content.startswith("```"):
+                    content = content.replace("```", "").strip()
+            
+            return content
+        except Exception as e:
+            error_str = str(e)
+            # If authentication/permission error, fallback to Gemini API
+            if "401" in error_str or "403" in error_str or "permission" in error_str.lower() or "authentication" in error_str.lower() or "credentials" in error_str.lower():
+                print(f"⚠️ Vertex AI authentication failed, falling back to Gemini API: {error_str}")
+                # Fall through to Gemini API fallback below
+            else:
+                # For other errors, try fallback if available
+                print(f"⚠️ Vertex AI error, falling back to Gemini API: {error_str}")
     
-    content = response.text.strip()
-    # Clean JSON if needed
-    if require_json:
-        if content.startswith("```json"):
-            content = content.replace("```json", "").replace("```", "").strip()
-        elif content.startswith("```"):
-            content = content.replace("```", "").strip()
+    # Fallback to Gemini API if Vertex AI is not available or failed
+    if not _gemini_api_key_available:
+        raise ValueError("Neither Vertex AI nor Gemini API is configured. Please set VERTEXAI_PROJECT_ID or GEMINI_API_KEY in your .env file.")
     
-    return content
+    # Use Gemini API
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=_gemini_api_key)
+        
+        if require_json:
+            full_prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or any explanations."
+        else:
+            full_prompt = prompt
+        
+        # Try multiple Gemini models
+        model_names = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite']
+        
+        for model_name in model_names:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(full_prompt)
+                
+                if not response or not response.text:
+                    continue
+                
+                content = response.text.strip()
+                
+                # Clean up JSON if needed
+                if require_json:
+                    if content.startswith("```json"):
+                        content = content.replace("```json", "").replace("```", "").strip()
+                    elif content.startswith("```"):
+                        content = content.replace("```", "").strip()
+                
+                print(f"✓ Successfully used Gemini API (model: {model_name})")
+                return content
+            except Exception as gemini_error:
+                error_str_gemini = str(gemini_error)
+                if "404" in error_str_gemini and "not found" in error_str_gemini.lower():
+                    print(f"Model {model_name} not available, trying next model...")
+                    continue
+                # If last model failed, raise error
+                if model_name == model_names[-1]:
+                    raise ValueError(f"Gemini API failed with all models: {error_str_gemini}")
+        
+        raise ValueError("Failed to generate content with Gemini API after trying all models")
+    except Exception as e:
+        raise ValueError(f"Failed to generate content: {str(e)}")
 
 
 def generate_bank_statement_reports(base_data, text):

@@ -114,31 +114,24 @@ vertexai_model_name = os.getenv("VERTEXAI_MODEL", "gemini-1.5-pro")
 vertexai_client = None
 gemini_api_key_available = False
 
-if vertexai_project and vertexai_project != "your-gcp-project-id":
+# Prioritize Gemini API key if available (no need for ADC/Vertex AI setup)
+if gemini_api_key:
+    gemini_api_key_available = True
+    print(f"✓ Using Gemini API directly (API key provided - no ADC setup needed)")
+    # Skip Vertex AI initialization when using Gemini API key
+    vertexai_client = None
+elif vertexai_project and vertexai_project != "your-gcp-project-id":
+    # Only use Vertex AI if no Gemini API key is provided
     try:
         vertexai.init(project=vertexai_project, location=vertexai_location)
         vertexai_client = GenerativeModel(vertexai_model_name)
         print(f"✓ Vertex AI initialized: project={vertexai_project}, location={vertexai_location}, model={vertexai_model_name}")
     except Exception as e:
         print(f"WARNING: Vertex AI initialization failed: {str(e)}")
-        print("Falling back to Gemini API if available...")
+        print("Please set GEMINI_API_KEY in .env file as fallback")
         vertexai_client = None
-        if gemini_api_key:
-            gemini_api_key_available = True
-            print("✓ Using Gemini API as fallback")
-elif gemini_api_key:
-    # Fallback: Use Gemini API directly (not Vertex AI)
-    gemini_api_key_available = True
-    print("WARNING: Using Gemini API directly instead of Vertex AI. For production, use Vertex AI.")
-    print("Set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file for Vertex AI.")
-
-# Ensure Gemini API is available as fallback even if Vertex AI is initialized
-if gemini_api_key and not gemini_api_key_available:
-    gemini_api_key_available = True
-    print(f"✓ Gemini API key available for fallback use")
 else:
-    print("WARNING: Neither Vertex AI nor Gemini API key configured. Document processing will fail.")
-    print("Please set VERTEXAI_PROJECT_ID or GEMINI_API_KEY in .env file.")
+    print("WARNING: Neither Vertex AI nor Gemini API key configured. Please set GEMINI_API_KEY in .env file.")
 
 # Helper function to generate cache key from prompt
 def get_cache_key(prompt: str, require_json: bool = False) -> str:
@@ -179,15 +172,8 @@ def generate_content_with_vertexai(prompt: str, require_json: bool = False, max_
         except Exception as e:
             print(f"Cache read error (continuing without cache): {str(e)}")
     
-    # Use Gemini API as fallback if Vertex AI is not available
-    if not vertexai_client and not gemini_api_key_available:
-        raise HTTPException(
-            status_code=500,
-            detail="Neither Vertex AI nor Gemini API is configured. Please set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file, or set GEMINI_API_KEY as a fallback."
-        )
-    
-    # If using Gemini API fallback
-    if not vertexai_client and gemini_api_key_available:
+    # Prioritize Gemini API if available (simpler, no ADC setup needed)
+    if gemini_api_key_available:
         import google.generativeai as genai
         genai.configure(api_key=gemini_api_key)
         
