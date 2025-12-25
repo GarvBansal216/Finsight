@@ -94,36 +94,52 @@ if poppler_path:
         if poppler_bin not in current_path:
             os.environ["PATH"] = os.pathsep.join([poppler_bin, current_path])
 
-# Load Vertex AI configuration from environment variables
-# Note: Vertex AI credentials are required for document processing
+# Load AI configuration from environment variables
+# ONLY use AI services that are explicitly configured in .env file
 vertexai_project = os.getenv("VERTEXAI_PROJECT_ID")
 vertexai_location = os.getenv("VERTEXAI_LOCATION", "us-central1")
-gemini_api_key = os.getenv("GEMINI_API_KEY")  # Fallback to Gemini API key if Vertex AI not configured
+gemini_api_key = os.getenv("GEMINI_API_KEY")
 vertexai_model_name = os.getenv("VERTEXAI_MODEL", "gemini-1.5-pro")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# Initialize Vertex AI client
+# Initialize AI clients - ONLY use what's configured
 vertexai_client = None
 gemini_api_key_available = False
+openai_client = None
 
-if vertexai_project and vertexai_project != "your-gcp-project-id":
+# Priority: Use ONLY the AI services configured in .env
+# 1. Check for Gemini API Key (GEMINI_API_KEY)
+if gemini_api_key and gemini_api_key.strip():
+    gemini_api_key_available = True
+    print("✓ Using Gemini API (GEMINI_API_KEY configured)")
+
+# 2. Check for Vertex AI (VERTEXAI_PROJECT_ID)
+if vertexai_project and vertexai_project.strip() and vertexai_project != "your-gcp-project-id":
     try:
         vertexai.init(project=vertexai_project, location=vertexai_location)
         vertexai_client = GenerativeModel(vertexai_model_name)
         print(f"✓ Vertex AI initialized: project={vertexai_project}, location={vertexai_location}, model={vertexai_model_name}")
     except Exception as e:
-        print(f"WARNING: Vertex AI initialization failed: {str(e)}")
-        print("Falling back to Gemini API if available...")
-        if gemini_api_key:
-            gemini_api_key_available = True
-            print("✓ Using Gemini API as fallback")
-elif gemini_api_key:
-    # Fallback: Use Gemini API directly (not Vertex AI)
-    gemini_api_key_available = True
-    print("WARNING: Using Gemini API directly instead of Vertex AI. For production, use Vertex AI.")
-    print("Set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file for Vertex AI.")
-else:
-    print("WARNING: Neither Vertex AI nor Gemini API key configured. Document processing will fail.")
-    print("Please set VERTEXAI_PROJECT_ID or GEMINI_API_KEY in .env file.")
+        print(f"❌ Vertex AI initialization failed: {str(e)}")
+        if not gemini_api_key_available:
+            print("⚠️  No fallback AI service available. Please configure GEMINI_API_KEY or fix Vertex AI setup.")
+
+# 3. Check for OpenAI (OPENAI_API_KEY) - if configured
+if openai_api_key and openai_api_key.strip():
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=openai_api_key)
+        print("✓ OpenAI client initialized (OPENAI_API_KEY configured)")
+    except Exception as e:
+        print(f"⚠️  OpenAI initialization failed: {str(e)}")
+
+# Final check: Ensure at least one AI service is available
+if not vertexai_client and not gemini_api_key_available and not openai_client:
+    print("❌ ERROR: No AI service configured!")
+    print("Please configure ONE of the following in your .env file:")
+    print("  - GEMINI_API_KEY (recommended)")
+    print("  - VERTEXAI_PROJECT_ID + VERTEXAI_LOCATION")
+    print("  - OPENAI_API_KEY")
 
 # Helper function to generate cache key from prompt
 def get_cache_key(prompt: str, require_json: bool = False) -> str:
@@ -164,15 +180,16 @@ def generate_content_with_vertexai(prompt: str, require_json: bool = False, max_
         except Exception as e:
             print(f"Cache read error (continuing without cache): {str(e)}")
     
-    # Use Gemini API as fallback if Vertex AI is not available
-    if not vertexai_client and not gemini_api_key_available:
+    # Check which AI services are available (ONLY use what's configured in .env)
+    if not vertexai_client and not gemini_api_key_available and not openai_client:
         raise HTTPException(
             status_code=500,
-            detail="Neither Vertex AI nor Gemini API is configured. Please set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file, or set GEMINI_API_KEY as a fallback."
+            detail="No AI service configured. Please set GEMINI_API_KEY, VERTEXAI_PROJECT_ID, or OPENAI_API_KEY in .env file."
         )
     
-    # If using Gemini API fallback
-    if not vertexai_client and gemini_api_key_available:
+    # Priority order: Use ONLY the AI services configured in .env
+    # Priority 1: Gemini API (if GEMINI_API_KEY is set)
+    if gemini_api_key_available:
         import google.generativeai as genai
         genai.configure(api_key=gemini_api_key)
         
@@ -235,13 +252,15 @@ def generate_content_with_vertexai(prompt: str, require_json: bool = False, max_
             detail="Failed to generate content with Gemini API after trying all available models."
         )
     
-    # Add JSON instruction if required
-    if require_json:
-        prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or any explanations."
-    
-    for attempt in range(max_retries):
-        try:
-            response = vertexai_client.generate_content(prompt)
+    # Priority 2: Use Vertex AI if configured (only if Gemini is not available)
+    if vertexai_client:
+        # Add JSON instruction if required
+        if require_json:
+            prompt = f"{prompt}\n\nIMPORTANT: Return ONLY valid JSON. Do not include markdown formatting, code blocks, or any explanations."
+        
+        for attempt in range(max_retries):
+            try:
+                response = vertexai_client.generate_content(prompt)
             
             if not response or not response.text:
                 raise ValueError("Vertex AI returned empty content")
@@ -297,8 +316,13 @@ def generate_content_with_vertexai(prompt: str, require_json: bool = False, max_
                         status_code=500,
                         detail=f"Error generating content with Vertex AI: {str(e)}"
                     )
+        return content  # Return content if Vertex AI succeeded
     
-    raise HTTPException(status_code=500, detail="Failed to get response from Vertex AI after retries")
+    # If we reach here, no configured AI service was able to generate content
+    raise HTTPException(
+        status_code=500, 
+        detail="Failed to generate content. Please check your AI service configuration in .env file."
+    )
 
 app = FastAPI(title="FinSight Document Processor", version="1.0.0")
 
@@ -1359,10 +1383,10 @@ OCR Text:
     except Exception as e:
         error_msg = str(e)
         # Provide more helpful error messages
-        if "Vertex AI is not configured" in error_msg or "VERTEXAI_PROJECT_ID" in error_msg:
+        if "No AI service configured" in error_msg or "VERTEXAI_PROJECT_ID" in error_msg or "GEMINI_API_KEY" in error_msg:
             raise HTTPException(
                 status_code=500,
-                detail="Vertex AI is not configured. Please set VERTEXAI_PROJECT_ID and VERTEXAI_LOCATION in .env file, or set GEMINI_API_KEY as a fallback."
+                detail="No AI service configured. Please set GEMINI_API_KEY, VERTEXAI_PROJECT_ID, or OPENAI_API_KEY in .env file."
             )
         elif "rate_limit" in error_msg.lower() or "quota" in error_msg.lower() or "429" in error_msg:
             raise HTTPException(
