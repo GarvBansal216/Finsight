@@ -78,6 +78,7 @@ This section visually communicates FinSight’s intelligence-first approach.
 - Separation of concerns
 - Future integration ready
 
+## 🧱 System Architecture (High Level)
 ---
 
 Frontend (React + Tailwind)
@@ -193,18 +194,3 @@ Full-Stack Developer | AI Engineer
 ❓ Questions
 
 Feel free to explore the codebase or reach out for clarifications.
-
-
----
-
-If you want, I can also:
-- Create a **short README (1-page)**
-- Add **screenshots section**
-- Add **architecture diagrams**
-- Convert this into **startup documentation**
-- Make a **college-submission version**
-
-Just tell me what you want next.
-
-## 🧱 System Architecture (High Level)
-
