@@ -1,5 +1,7 @@
 # FinSight - Complete Setup Instructions
 
+
+
 ## ✅ All Errors Fixed
 
 All errors in `app.py` (lines 883-1012 and throughout) have been fixed:
