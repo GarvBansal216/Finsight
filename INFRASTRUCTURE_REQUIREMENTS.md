@@ -14,7 +14,7 @@ This document outlines all databases, storage solutions, and custom APIs require
 #### Tables/Collections Needed:
 
 **Users Table**
-```sql
+```
 - user_id (UUID, Primary Key)
 - email (String, Unique)
 - display_name (String)
